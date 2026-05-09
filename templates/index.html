@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#171717" />
+<title>CZBooks iPhone 閱讀器</title>
+<style>
+:root{--bg:#f6f2ea;--panel:#fffaf0;--text:#2b2118;--muted:#7b6a58;--line:#ddcfbd;--accent:#7c4d2b;--active:rgba(127,89,48,.14);--safe-top:env(safe-area-inset-top);--safe-bottom:env(safe-area-inset-bottom);--font-size:20px;--line-height:1.9}
+body.dark{--bg:#171717;--panel:#222;--text:#e8e3dc;--muted:#aaa;--line:#3a3a3a;--accent:#d3a26f;--active:rgba(211,162,111,.16)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang TC","Noto Sans TC",system-ui,sans-serif}
+button,input,select{font:inherit}button{border:0;border-radius:999px;background:var(--accent);color:white;padding:10px 14px;cursor:pointer}button.secondary{background:var(--panel);color:var(--text);border:1px solid var(--line)}
+input,select{width:100%;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);padding:12px 14px;outline:none}
+.progress{position:fixed;top:0;left:0;height:3px;background:var(--accent);width:0%;z-index:50}
+.topbar{position:sticky;top:0;z-index:30;background:var(--bg);border-bottom:1px solid var(--line);padding:calc(10px + var(--safe-top)) 14px 10px;display:flex;align-items:center;gap:8px}
+.topbar-title{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}.icon-btn{width:42px;height:42px;padding:0;display:grid;place-items:center;border-radius:999px}
+.reader{padding:18px 18px 140px;max-width:760px;margin:0 auto}.reader-title{font-size:26px;line-height:1.35;margin:8px 0 22px}.content{white-space:pre-wrap;font-size:var(--font-size);line-height:var(--line-height);letter-spacing:.02em}.empty{color:var(--muted);text-align:center;margin-top:22vh;line-height:1.8}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:60;background:var(--panel);border-top:1px solid var(--line);border-radius:22px 22px 0 0;max-height:86vh;transform:translateY(110%);transition:.22s ease;box-shadow:0 -16px 50px rgba(0,0,0,.18);padding:14px 14px calc(16px + var(--safe-bottom));overflow:auto}
+.sheet.open{transform:translateY(0)}.sheet-handle{width:44px;height:5px;border-radius:999px;background:var(--line);margin:0 auto 12px}.sheet-title{font-size:18px;font-weight:800;margin:8px 0 12px}
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.28);z-index:55;display:none}.backdrop.open{display:block}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row>*{flex:1}.status{font-size:14px;color:var(--muted);line-height:1.6;margin:10px 0}.hint{font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--line);padding-top:12px;margin-top:14px}
+.chapters{display:grid;gap:4px;margin-top:10px}.chapter-item{display:block;text-decoration:none;color:var(--text);padding:11px 10px;border-radius:12px;line-height:1.45}.chapter-item.active{background:var(--active);font-weight:700}.chapter-item.read{color:var(--muted)}
+.bottom-player{position:fixed;left:10px;right:10px;bottom:calc(10px + var(--safe-bottom));z-index:40;background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:10px;box-shadow:0 12px 38px rgba(0,0,0,.16)}
+.player-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}.player-row button{padding:11px 6px;font-size:14px}.mini{font-size:12px;color:var(--muted);padding:0 6px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.controls-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.label{font-size:13px;color:var(--muted);display:grid;gap:5px}
+.speak-paragraph{display:block;border-radius:12px;padding:2px 6px;margin:2px -6px;transition:.18s}.speak-paragraph.speaking{background:var(--text);color:var(--bg);box-shadow:0 0 0 2px var(--accent)}
+@media(min-width:760px){.bottom-player{left:50%;transform:translateX(-50%);max-width:720px}.sheet{left:50%;right:auto;width:720px;transform:translate(-50%,110%)}.sheet.open{transform:translate(-50%,0)}}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<header class="topbar">
+<button class="secondary icon-btn" onclick="openSheet('librarySheet')">☰</button>
+<div class="topbar-title" id="topTitle">CZBooks iPhone 閱讀器</div>
+<button class="secondary icon-btn" onclick="openSheet('settingsSheet')">Aa</button>
+</header>
+
+<main class="reader" id="reader">
+<div class="empty">貼上 CZBooks 小說目錄頁 URL 後開始閱讀。<br>請用 Safari 打開電腦顯示的 http://IP:5000。</div>
+</main>
+
+<div class="bottom-player">
+<div class="mini" id="miniStatus">尚未載入小說</div>
+<div class="player-row">
+<button class="secondary" onclick="prevChapter()">上一章</button>
+<button onclick="speakCurrent()">朗讀</button>
+<button class="secondary" onclick="pauseSpeak()">暫停</button>
+<button class="secondary" onclick="nextChapter()">下一章</button>
+</div>
+</div>
+
+<div class="backdrop" id="backdrop" onclick="closeSheets()"></div>
+
+<section class="sheet open" id="librarySheet">
+<div class="sheet-handle"></div>
+<div class="sheet-title">書庫與章節</div>
+<input id="bookUrl" placeholder="貼上小說目錄頁，例如 https://czbooks.net/n/s6pbed" />
+<div class="row" style="margin-top:8px">
+<button onclick="loadBook(false)">載入目錄</button>
+<button class="secondary" onclick="loadBook(true)">重新抓取</button>
+</div>
+<div class="row" style="margin-top:8px">
+<button class="secondary" onclick="resumeLast()">繼續上次閱讀</button>
+<button class="secondary" onclick="downloadCurrentChapter()">下載本章 TXT</button>
+</div>
+<div class="status" id="bookStatus">請貼上小說目錄頁 URL。</div>
+<input id="chapterSearch" placeholder="搜尋章節標題" oninput="renderChapters()" />
+<div class="chapters" id="chapters"></div>
+<div class="hint">第一次開啟會自動顯示這個選單。之後按左上角 ☰ 可再打開。</div>
+</section>
+
+<section class="sheet" id="settingsSheet">
+<div class="sheet-handle"></div>
+<div class="sheet-title">閱讀與朗讀設定</div>
+<div class="controls-grid">
+<label class="label">字體<select id="fontSize" onchange="setFontSize(this.value)"><option value="18px">小</option><option value="20px" selected>中</option><option value="24px">大</option><option value="28px">特大</option></select></label>
+<label class="label">行距<select id="lineHeight" onchange="setLineHeight(this.value)"><option value="1.7">緊湊</option><option value="1.9" selected>舒適</option><option value="2.2">寬鬆</option></select></label>
+<label class="label">語速<select id="speakRate" onchange="localStorage.setItem('speakRate', this.value)"><option value="0.8">0.8x</option><option value="1" selected>1.0x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="1.75">1.75x</option><option value="2">2.0x</option><option value="2.25">2.25x</option><option value="2.5">2.5x</option><option value="3">3.0x</option><option value="3.5">3.5x</option><option value="4">4.0x</option></select></label>
+<label class="label">語音<select id="voiceSelect" onchange="localStorage.setItem('voiceName', this.value)"><option value="">自動選擇</option></select></label>
+</div>
+<div class="row" style="margin-top:12px">
+<button class="secondary" onclick="toggleTheme()">深/淺色</button>
+<button class="secondary" onclick="toggleAutoRead()" id="autoBtn">自動朗讀：關</button>
+<button class="secondary" onclick="stopSpeak()">停止朗讀</button>
+</div>
+<div class="hint">iPhone 使用 iOS 內建中文語音。若第一次沒聲音，先點一次朗讀再試。</div>
+</section>
+
+<script>
+let book=null,currentIndex=-1,currentChapter=null,autoRead=false;
+let readMap=JSON.parse(localStorage.getItem('readMap')||'{}');
+let paragraphBoundaries=[],currentSpeakingParagraph=-1;
+const $=id=>document.getElementById(id);
+
+function openSheet(id){$('backdrop').classList.add('open');document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open'));$(id).classList.add('open')}
+function closeSheets(){$('backdrop').classList.remove('open');document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open'))}
+async function postJson(url,data){const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(res.headers.get('content-type')?.includes('application/json')){const json=await res.json();if(!res.ok)throw new Error(json.error||'請求失敗');return json}if(!res.ok)throw new Error('請求失敗');return res}
+
+async function loadBook(refresh=false){
+  const url=$('bookUrl').value.trim();
+  if(!url)return alert('請先貼上小說目錄頁 URL');
+  $('bookStatus').textContent='正在載入目錄...';
+  try{
+    book=await postJson('/api/book',{url,refresh});
+    localStorage.setItem('lastBookUrl',url);
+    $('bookStatus').textContent=`${book.title}：共 ${book.chapters.length} 章`;
+    $('topTitle').textContent=book.title;
+    $('miniStatus').textContent=book.title;
+    renderChapters();
+  }catch(e){$('bookStatus').textContent='錯誤：'+e.message}
+}
+function renderChapters(){const box=$('chapters');box.innerHTML='';if(!book)return;const keyword=$('chapterSearch').value.trim().toLowerCase();book.chapters.forEach((ch,i)=>{if(keyword&&!ch.title.toLowerCase().includes(keyword))return;const a=document.createElement('a');a.href='#';a.className='chapter-item'+(i===currentIndex?' active':'')+(readMap[ch.url]?' read':'');a.textContent=`${i+1}. ${ch.title}`;a.onclick=ev=>{ev.preventDefault();openChapter(i);closeSheets()};box.appendChild(a)})}
+async function openChapter(index,refresh=false){if(!book||!book.chapters[index])return;stopSpeak();currentIndex=index;renderChapters();const ch=book.chapters[index];$('reader').innerHTML=`<div class="status">正在載入：${escapeHtml(ch.title)}</div>`;try{currentChapter=await postJson('/api/chapter',{url:ch.url,refresh});readMap[ch.url]=true;localStorage.setItem('readMap',JSON.stringify(readMap));localStorage.setItem('lastChapterIndex',String(index));document.title=currentChapter.title+' - CZBooks iPhone 閱讀器';$('topTitle').textContent=currentChapter.title;$('miniStatus').textContent=`${book.title} · ${index+1}/${book.chapters.length}`;renderReaderContent(currentChapter);window.scrollTo({top:0,behavior:'smooth'});renderChapters();prefetchNext();if(autoRead)speakCurrent()}catch(e){$('reader').innerHTML=`<div class="status">錯誤：${escapeHtml(e.message)}</div>`}}
+function prefetchNext(){if(!book)return;const next=book.chapters[currentIndex+1];if(!next)return;fetch('/api/prefetch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:next.url})}).catch(()=>{})}
+function nextChapter(){if(book&&currentIndex+1<book.chapters.length)openChapter(currentIndex+1)}
+function prevChapter(){if(book&&currentIndex>0)openChapter(currentIndex-1)}
+async function resumeLast(){const lastUrl=localStorage.getItem('lastBookUrl');const lastIndex=Number(localStorage.getItem('lastChapterIndex')||'0');if(!lastUrl)return alert('目前沒有上次閱讀紀錄');$('bookUrl').value=lastUrl;await loadBook(false);openChapter(lastIndex);closeSheets()}
+function buildSpeakParagraphs(text){const paragraphs=String(text||'').split(/\n\s*\n+/).map(p=>p.trim()).filter(Boolean);paragraphBoundaries=[];let cursor=0;return paragraphs.map((p,index)=>{const start=cursor,end=start+p.length;paragraphBoundaries.push({start,end,index});cursor=end+2;return `<span class="speak-paragraph" data-pindex="${index}">${escapeHtml(p)}</span>`}).join('\n\n')}
+function renderReaderContent(chapter){paragraphBoundaries=[];currentSpeakingParagraph=-1;$('reader').innerHTML=`<h1 class="reader-title">${escapeHtml(chapter.title)}</h1><article class="content" id="content">${buildSpeakParagraphs(chapter.content)}</article>`;updateProgress()}
+function highlightSpeakingParagraph(charIndex){const found=paragraphBoundaries.find(p=>charIndex>=p.start&&charIndex<=p.end);if(!found||found.index===currentSpeakingParagraph)return;document.querySelectorAll('.speak-paragraph.speaking').forEach(el=>el.classList.remove('speaking'));const el=document.querySelector(`.speak-paragraph[data-pindex="${found.index}"]`);if(el){el.classList.add('speaking');el.scrollIntoView({behavior:'smooth',block:'center'})}currentSpeakingParagraph=found.index}
+function clearSpeakingHighlight(){document.querySelectorAll('.speak-paragraph.speaking').forEach(el=>el.classList.remove('speaking'));currentSpeakingParagraph=-1}
+function getPreferredVoice(){const voices=speechSynthesis.getVoices();const selectedName=$('voiceSelect').value||localStorage.getItem('voiceName')||'';if(selectedName){const selected=voices.find(v=>v.name===selectedName);if(selected)return selected}return voices.find(v=>/zh-TW|zh-HK|zh-CN/i.test(v.lang))||voices.find(v=>/Chinese|Mandarin|中文|國語|普通話/i.test(v.name))||null}
+function loadVoices(){const select=$('voiceSelect');const current=localStorage.getItem('voiceName')||select.value||'';const voices=speechSynthesis.getVoices();select.innerHTML='<option value="">自動選擇</option>';voices.filter(v=>/zh|Chinese|Mandarin|中文|國語|普通話/i.test(v.lang+' '+v.name)).forEach(v=>{const opt=document.createElement('option');opt.value=v.name;opt.textContent=`${v.name}（${v.lang}）`;select.appendChild(opt)});select.value=current}
+function speakCurrent(){if(!currentChapter)return alert('請先打開一個章節');stopSpeak();const utter=new SpeechSynthesisUtterance(currentChapter.content);const voice=getPreferredVoice();if(voice){utter.voice=voice;utter.lang=voice.lang}else{utter.lang='zh-TW'}utter.rate=Number($('speakRate').value||'1');utter.pitch=1.0;utter.onboundary=e=>{if(typeof e.charIndex==='number')highlightSpeakingParagraph(e.charIndex)};utter.onend=()=>{clearSpeakingHighlight();if(autoRead&&book&&currentIndex+1<book.chapters.length)openChapter(currentIndex+1)};utter.onerror=()=>clearSpeakingHighlight();speechSynthesis.speak(utter)}
+function pauseSpeak(){if(speechSynthesis.paused)speechSynthesis.resume();else speechSynthesis.pause()}
+function stopSpeak(){try{speechSynthesis.cancel()}catch{}clearSpeakingHighlight()}
+function toggleAutoRead(){autoRead=!autoRead;$('autoBtn').textContent='自動朗讀：'+(autoRead?'開':'關');localStorage.setItem('autoRead',autoRead?'1':'0')}
+function toggleTheme(){document.body.classList.toggle('dark');localStorage.setItem('darkTheme',document.body.classList.contains('dark')?'1':'0')}
+function setFontSize(size){document.documentElement.style.setProperty('--font-size',size);localStorage.setItem('fontSize',size)}
+function setLineHeight(value){document.documentElement.style.setProperty('--line-height',value);localStorage.setItem('lineHeight',value)}
+function downloadCurrentChapter(){if(!currentChapter)return alert('請先打開章節');postJson('/api/export/current',{url:currentChapter.url}).then(async res=>{const blob=await res.blob();const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=currentChapter.title+'.txt';a.click();URL.revokeObjectURL(a.href)}).catch(e=>alert(e.message))}
+function updateProgress(){const doc=document.documentElement;const top=doc.scrollTop||document.body.scrollTop;const height=doc.scrollHeight-doc.clientHeight;const percent=height>0?(top/height)*100:0;$('progress').style.width=`${Math.min(100,Math.max(0,percent))}%`}
+function escapeHtml(text){return String(text||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
+window.addEventListener('scroll',updateProgress,{passive:true});
+speechSynthesis.onvoiceschanged=loadVoices;
+window.addEventListener('load',()=>{loadVoices();setTimeout(loadVoices,500);const lastUrl=localStorage.getItem('lastBookUrl');if(lastUrl)$('bookUrl').value=lastUrl;if(localStorage.getItem('darkTheme')==='1')document.body.classList.add('dark');const fs=localStorage.getItem('fontSize');if(fs){$('fontSize').value=fs;setFontSize(fs)}const lh=localStorage.getItem('lineHeight');if(lh){$('lineHeight').value=lh;setLineHeight(lh)}const rate=localStorage.getItem('speakRate');if(rate)$('speakRate').value=rate;autoRead=localStorage.getItem('autoRead')==='1';$('autoBtn').textContent='自動朗讀：'+(autoRead?'開':'關');$('backdrop').classList.add('open')});
+</script>
+</body>
+</html>
